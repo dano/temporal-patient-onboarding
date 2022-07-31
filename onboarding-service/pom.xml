@@ -14,10 +14,10 @@
     <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
     <quarkus.platform.artifact-id>quarkus-bom</quarkus.platform.artifact-id>
     <quarkus.platform.group-id>io.quarkus.platform</quarkus.platform.group-id>
-    <quarkus.platform.version>2.4.1.Final</quarkus.platform.version>
+    <quarkus.platform.version>2.11.1.Final</quarkus.platform.version>
     <surefire-plugin.version>3.0.0-M5</surefire-plugin.version>
 
-    <version.temporal.sdk>1.8.1</version.temporal.sdk>
+    <version.temporal.sdk>1.14.0</version.temporal.sdk>
     <version.serverlessworkflow.sdk>3.0.0.Final</version.serverlessworkflow.sdk>
     <version.json.path>2.6.0</version.json.path>
     <version.asyncapi>1.0.0-EAP</version.asyncapi>

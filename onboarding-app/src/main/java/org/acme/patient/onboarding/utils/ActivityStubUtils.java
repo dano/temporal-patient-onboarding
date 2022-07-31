@@ -12,6 +12,7 @@ public class ActivityStubUtils {
     // in order to limit the activity retry time
     // this is done so we don't have to wait too long in demo to show failure
     public static ServiceExecutor getActivitiesStub() {
+        //TODO remove after apply to yml
         return Workflow.newActivityStub(
                 ServiceExecutor.class,
                 ActivityOptions.newBuilder()

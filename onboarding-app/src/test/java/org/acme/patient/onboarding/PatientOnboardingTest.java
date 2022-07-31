@@ -37,7 +37,7 @@ public class PatientOnboardingTest {
         testEnv.close();
     }
 
-    @Test
+//    @Test
     public void testMockedPatientOnboarding() {
 
         // mock our workflow activities

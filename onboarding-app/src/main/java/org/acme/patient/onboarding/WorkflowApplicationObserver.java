@@ -22,27 +22,26 @@ public class WorkflowApplicationObserver {
     private WorkflowClient client;
     private WorkerFactory factory;
 
-    @ConfigProperty(name = "onboarding.task.queue")
-    String taskQueue;
+//    @ConfigProperty(name = "onboarding.task.queue")
+//    String taskQueue;
 
-    @Inject
-    @RestClient
-    OnboardingServiceClient serviceClient;
+//    @Inject
+//    ServiceExecutorImpl serviceExecutor;
 
     void onStart(@Observes StartupEvent ev) {
-        WorkflowServiceStubs service = WorkflowServiceStubs.newInstance();
-        client = WorkflowClient.newInstance(service);
-        factory = WorkerFactory.newInstance(client);
-        Worker worker = factory.newWorker(taskQueue);
-
-        worker.registerWorkflowImplementationTypes(OnboardingImpl.class);
-        worker.registerActivitiesImplementations(new ServiceExecutorImpl(serviceClient));
-
-        factory.start();
+//        WorkflowServiceStubs service = WorkflowServiceStubs.newInstance();
+//        client = WorkflowClient.newInstance(service);
+//        factory = WorkerFactory.newInstance(client);
+//        Worker worker = factory.newWorker(taskQueue);
+//
+//        worker.registerWorkflowImplementationTypes(OnboardingImpl.class);
+//        worker.registerActivitiesImplementations(serviceExecutor);
+//
+//        factory.start();
     }
 
     void onStop(@Observes ShutdownEvent ev) {
-        factory.shutdown();
+//        factory.shutdown();
     }
 
     public WorkflowClient getClient() {

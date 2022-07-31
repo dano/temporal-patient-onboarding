@@ -1,21 +1,27 @@
 package org.acme.patient.onboarding.app;
 
+import io.quarkus.logging.Log;
+import io.quarkus.temporal.runtime.annotations.TemporalActivityStub;
+import io.quarkus.temporal.runtime.annotations.TemporalWorkflow;
 import org.acme.patient.onboarding.model.Patient;
-import org.acme.patient.onboarding.utils.ActivityStubUtils;
 
+@TemporalWorkflow(name="test", queue = "OnboardingTaskQueue")
 public class OnboardingImpl implements Onboarding {
 
-
-    ServiceExecutor serviceExecutor = ActivityStubUtils.getActivitiesStub();
-
+    @TemporalActivityStub
+    ServiceExecutor serviceExecutor;
     String status;
     Patient onboardingPatient;
 
     @Override
     public Patient onboardNewPatient(Patient patient) {
         onboardingPatient = patient;
+//        Log.info("Starting to onboard a patient!");
 
         try {
+            // 0. save the patient
+            status = "Saving the patient to the db";
+            serviceExecutor.savePatient(patient);
             // 1. assign hospital to patient
             status = "Assigning hospital to patient: " + onboardingPatient.getName();
             onboardingPatient.setHospital(
@@ -47,6 +53,7 @@ public class OnboardingImpl implements Onboarding {
             patient.setOnboarded("no");
         }
 
+//        Log.info("Done onboarding!");
         return onboardingPatient;
     }
 

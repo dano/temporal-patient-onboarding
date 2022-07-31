@@ -1,5 +1,6 @@
 package org.acme.patient.onboarding;
 
+import io.quarkus.logging.Log;
 import org.acme.patient.onboarding.model.Doctor;
 import org.acme.patient.onboarding.model.Hospital;
 import org.acme.patient.onboarding.model.Patient;
@@ -28,6 +29,7 @@ public class OnboardingEndpoint {
     @POST
     @Path("assignhospital")
     public synchronized Hospital assignHospitalToPatient(String zip) {
+        Log.info("in here assign hospital");
         Hospital hospital = hospitals.stream().filter(h -> h.getZip().equals(zip))
                 .findFirst()
                 .orElse(new Hospital("Local Hospital","123 Local Street", "555-55-5555", "12345"));
@@ -38,6 +40,7 @@ public class OnboardingEndpoint {
     @POST
     @Path("assigndoctor")
     public synchronized Doctor assignDoctorToPatient(String condition) {
+        Log.info("in here assign doctor");
         Doctor doctor = doctors.stream().filter(d -> d.getSpecialty().equals(condition))
                 .findFirst()
                 .orElse(new Doctor("Michael Scott", "img/docfemale.png", "General"));
