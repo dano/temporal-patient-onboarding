@@ -13,5 +13,5 @@ import static java.lang.annotation.RetentionPolicy.RUNTIME;
 @InterceptorBinding
 @Target({ElementType.TYPE, METHOD})
 @Retention(RUNTIME)
-public @interface Idempotent {
+public @interface AsyncMethod {
 }

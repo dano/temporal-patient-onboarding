@@ -16,7 +16,7 @@ public class OnboardingImpl implements Onboarding {
     @Override
     public Patient onboardNewPatient(Patient patient) {
         onboardingPatient = patient;
-//        Log.info("Starting to onboard a patient!");
+        Log.info("Starting to onboard a patient!");
 
         try {
             // 0. save the patient
@@ -53,7 +53,7 @@ public class OnboardingImpl implements Onboarding {
             patient.setOnboarded("no");
         }
 
-//        Log.info("Done onboarding!");
+        Log.info("Done onboarding!");
         return onboardingPatient;
     }
 

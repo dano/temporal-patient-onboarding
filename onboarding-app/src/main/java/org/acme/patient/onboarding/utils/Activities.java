@@ -15,9 +15,9 @@ import java.util.UUID;
 import java.util.function.Function;
 
 public final class Activities {
-  private static final String SELECT_IDEMPOTENCY_KEY = "SELECT * from idempotency_keys where id = ($1)";
+  public static final String SELECT_IDEMPOTENCY_KEY = "SELECT * from idempotency_keys where id = ($1)";
 
-  private static final String INSERT_IDEMPOTENCY_KEY = "INSERT INTO idempotency_keys (id, wf_id) VALUES ($1, $2)";
+  public static final String INSERT_IDEMPOTENCY_KEY = "INSERT INTO idempotency_keys (id, wf_id) VALUES ($1, $2)";
 
   /**
    * Execute a function that takes a SqlConnection managing an open a DB transaction, and returns a Future.
@@ -55,11 +55,11 @@ public final class Activities {
       Function<SqlConnection, Future<T>> runBackup) {
     var ctx = Activity.getExecutionContext();
     var uuid = getIdempotencyKey(ctx);
-    Log.debug("Starting transaction and checking idempotency");
+    Log.info("Starting transaction and checking idempotency");
     return client.withTransaction(c -> hasAlreadyRun(c, uuid)
         .flatMap(alreadyRun -> {
           if (!alreadyRun) {
-            Log.debug("Idempotency key not found. Code hasn't already run");
+            Log.info("Idempotency key not found. Code hasn't already run");
             return saveIdempotencyKey(ctx, uuid, c)
                 .flatMap(ign -> runOnce.apply(c));
           } else {

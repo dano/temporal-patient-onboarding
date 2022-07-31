@@ -7,7 +7,7 @@ defaults:
   activityScheduleToCloseTimeout: 60 # in minutes default is 60 minute
   activityStartToCloseTimeout: 60 # in minutes default is 60 minute
   #heartbeat timeout must be shorter than START_TO_CLOSE timeout
-  activityHeartBeatTimeout: 5 # in minutes default is 60 minute
+  activityHeartBeatTimeout: 1 # in minutes default is 60 minute
   activityRetryInitInterval: 1 # in minutes default is 5 minute
   activityRetryMaxInterval: 1 # in minutes default is 1 minute if not set
   activityRetryBackOffCoefficient: 1.0  # default is 1.0

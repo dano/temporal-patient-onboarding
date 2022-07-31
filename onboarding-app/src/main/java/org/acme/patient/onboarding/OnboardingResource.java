@@ -44,8 +44,8 @@ public class OnboardingResource {
 
     void config (@Observes StartupEvent ev) {
         // Setup DB tables
-        pool.query("DROP TABLE IF EXISTS patients").execute()
-            .flatMap(ign -> pool.query("CREATE TABLE IF NOT EXISTS patients (name TEXT PRIMARY KEY)").execute())
+//        pool.query("DROP TABLE IF EXISTS patients").execute()
+            pool.query("CREATE TABLE IF NOT EXISTS patients (name TEXT PRIMARY KEY)").execute()
             .flatMap(ign -> pool.query("CREATE TABLE IF NOT EXISTS idempotency_keys (id TEXT PRIMARY KEY, wf_id TEXT)").execute())
             .result();
 
