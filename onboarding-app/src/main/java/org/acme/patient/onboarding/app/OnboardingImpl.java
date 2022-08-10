@@ -1,11 +1,17 @@
 package org.acme.patient.onboarding.app;
 
+import io.quarkus.arc.Unremovable;
 import io.quarkus.logging.Log;
 import io.quarkus.temporal.runtime.annotations.TemporalActivityStub;
 import io.quarkus.temporal.runtime.annotations.TemporalWorkflow;
 import org.acme.patient.onboarding.model.Patient;
+import org.acme.patient.onboarding.utils.AsyncMethod;
+import org.acme.patient.onboarding.utils.CleanupIdempotencyKeys;
+
+import javax.inject.Inject;
 
 @TemporalWorkflow(name="test", queue = "OnboardingTaskQueue")
+@Unremovable
 public class OnboardingImpl implements Onboarding {
 
     @TemporalActivityStub
@@ -16,7 +22,7 @@ public class OnboardingImpl implements Onboarding {
     @Override
     public Patient onboardNewPatient(Patient patient) {
         onboardingPatient = patient;
-        Log.info("Starting to onboard a patient!");
+        Log.info("Starting to onboard a patient!" + getClass().getCanonicalName());
 
         try {
             // 0. save the patient
@@ -48,12 +54,11 @@ public class OnboardingImpl implements Onboarding {
             status = "Finalizing onboarding for: " + onboardingPatient.getName();
             patient.setOnboarded(
                     serviceExecutor.finalizeOnboarding());
-
+            Log.info("Done onboarding!");
         } catch (Exception e) {
+            Log.error("Failed to onboard", e);
             patient.setOnboarded("no");
         }
-
-        Log.info("Done onboarding!");
         return onboardingPatient;
     }
 

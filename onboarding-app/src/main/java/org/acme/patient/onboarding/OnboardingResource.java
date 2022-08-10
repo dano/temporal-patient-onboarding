@@ -44,8 +44,7 @@ public class OnboardingResource {
 
     void config (@Observes StartupEvent ev) {
         // Setup DB tables
-//        pool.query("DROP TABLE IF EXISTS patients").execute()
-            pool.query("CREATE TABLE IF NOT EXISTS patients (name TEXT PRIMARY KEY)").execute()
+        pool.query("CREATE TABLE IF NOT EXISTS patients (name TEXT PRIMARY KEY)").execute()
             .flatMap(ign -> pool.query("CREATE TABLE IF NOT EXISTS idempotency_keys (id TEXT PRIMARY KEY, wf_id TEXT)").execute())
             .result();
 
@@ -55,29 +54,6 @@ public class OnboardingResource {
             cleanupIdempotencyKeys();
         });
 
-    }
-
-    private void cleanupIdempotencyKeys() {
-        var stub = client.getWorkflowServiceStubs();
-        ListOpenWorkflowExecutionsRequest req = ListOpenWorkflowExecutionsRequest.newBuilder()
-            .setNamespace("default")
-            .build();
-        vertx.<ListOpenWorkflowExecutionsResponse>executeBlocking(p -> {
-            var resp = stub.blockingStub().listOpenWorkflowExecutions(req);
-            p.complete(resp);
-        }).flatMap(resp -> {
-            var executions = resp.getExecutionsList().stream()
-                .map(e -> "'" + e.getExecution().getWorkflowId() + "'")
-                .collect(Collectors.toList());
-            Log.info("Open executions are: " + executions);
-            var query = "DELETE FROM idempotency_keys";
-            if (!executions.isEmpty()) {
-                query += " WHERE wf_id NOT IN (" + String.join(",", executions) + ")";
-            }
-            Log.info("Running cleanup query " + query);
-            return pool.query(query).execute();
-        })
-            .onFailure(e -> Log.error("Failed to do cleanup ", e));
     }
 
     @POST
@@ -100,5 +76,28 @@ public class OnboardingResource {
 //            e.printStackTrace();
             return "Unable to query workflow with id: " + patientId;
         }
+    }
+
+    private void cleanupIdempotencyKeys() {
+        var stub = client.getWorkflowServiceStubs();
+        ListOpenWorkflowExecutionsRequest req = ListOpenWorkflowExecutionsRequest.newBuilder()
+            .setNamespace("default")
+            .build();
+        vertx.<ListOpenWorkflowExecutionsResponse>executeBlocking(p -> {
+                var resp = stub.blockingStub().listOpenWorkflowExecutions(req);
+                p.complete(resp);
+            }).flatMap(resp -> {
+                var executions = resp.getExecutionsList().stream()
+                    .map(e -> "'" + e.getExecution().getWorkflowId() + "'")
+                    .collect(Collectors.toList());
+                Log.info("Open executions are: " + executions);
+                var query = "DELETE FROM idempotency_keys";
+                if (!executions.isEmpty()) {
+                    query += " WHERE wf_id NOT IN (" + String.join(",", executions) + ")";
+                }
+                Log.info("Running cleanup query " + query);
+                return pool.query(query).execute();
+            })
+            .onFailure(e -> Log.error("Failed to do cleanup ", e));
     }
 }

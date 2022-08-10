@@ -6,7 +6,10 @@ import io.temporal.activity.Activity;
 import io.temporal.client.WorkflowClient;
 import io.vertx.core.Future;
 import io.vertx.pgclient.PgPool;
-import io.vertx.sqlclient.*;
+import io.vertx.sqlclient.Row;
+import io.vertx.sqlclient.RowSet;
+import io.vertx.sqlclient.SqlClient;
+import io.vertx.sqlclient.Tuple;
 import org.acme.patient.onboarding.model.Doctor;
 import org.acme.patient.onboarding.model.Hospital;
 import org.acme.patient.onboarding.model.Patient;
@@ -16,24 +19,22 @@ import org.eclipse.microprofile.rest.client.inject.RestClient;
 
 import javax.inject.Inject;
 
-import java.util.UUID;
-
 import static org.acme.patient.onboarding.utils.Activities.*;
 
 @TemporalActivity(name="serviceExecutor")
 public class ServiceExecutorImpl implements ServiceExecutor {
 
     public static final String PATIENT_INSERT = "INSERT INTO patients (name) VALUES ($1)";
-    private final OnboardingServiceClient serviceClient;
-    private final PgPool client;
-    private final WorkflowClient wc;
 
     @Inject
-    public ServiceExecutorImpl(@RestClient OnboardingServiceClient serviceClient, PgPool client, WorkflowClient wc) {
-        this.serviceClient = serviceClient;
-        this.client = client;
-        this.wc = wc;
-    }
+    @RestClient
+    OnboardingServiceClient serviceClient;
+
+    @Inject
+    PgPool client;
+
+    @Inject
+    WorkflowClient wc;
 
     /**
      * Here's a basic version of the save patient activity. We need to indicate that the method is async,
@@ -45,14 +46,15 @@ public class ServiceExecutorImpl implements ServiceExecutor {
      *
      * @param patient The patient to save.
      */
-    public void savePatientBasic(Patient patient) {
+    public void savePatient(Patient patient) {
         Log.info("saving the patient!");
         var ctx = Activity.getExecutionContext();
         ctx.doNotCompleteOnReturn();
         var token = ctx.getTaskToken();
         var completionClient = wc.newActivityCompletionClient();
         doSavePatient(client, patient)
-            .onSuccess(igin -> sleep(9))
+            .onSuccess(ign -> sleep(9)) //Used to simulate failure after commit but before temporal finds out.
+            .onFailure(e -> Log.error("Saving patient failed", e))
             .onFailure(err -> completionClient.completeExceptionally(token, (Exception) err))
             .onSuccess(ign -> completionClient.complete(token, null));
     }
@@ -61,9 +63,10 @@ public class ServiceExecutorImpl implements ServiceExecutor {
      * This adds idempotency to the basic version. It is a bit contrived, because probably no one would try to
      * do all this work in a single method, but it gives you an idea of how much extra "stuff" is required
      * besides doing the actual thing you care about: saving the patient pojo to the db.
-     * @param patient
+     *
+     * @param patient The patient to save.
      */
-    public void savePatientIdempotent(Patient patient) {
+    public void savePatientVerbose(Patient patient) {
         Log.info("saving the patient!");
         var ctx = Activity.getExecutionContext();
         // Setup for asynchronous execution
@@ -72,12 +75,7 @@ public class ServiceExecutorImpl implements ServiceExecutor {
         var completionClient = wc.newActivityCompletionClient();
 
         // Set up for idempotent execution
-        var idempotencyKey = ctx.getHeartbeatDetails(String.class)
-            .orElseGet(() -> {
-                var id = UUID.randomUUID().toString();
-                Activity.getExecutionContext().heartbeat(id);
-                return id;
-            });
+        var idempotencyKey = ctx.getInfo().getActivityId();
         client.withTransaction(c -> c.preparedQuery(SELECT_IDEMPOTENCY_KEY).execute(Tuple.of(idempotencyKey))
             .map(rows -> rows.size() > 0)
             .flatMap(alreadyRun -> {
@@ -92,7 +90,8 @@ public class ServiceExecutorImpl implements ServiceExecutor {
                 }
             })
         )
-            .onSuccess(igin -> sleep(9))
+            .onSuccess(ign -> sleep(9)) //Used to simulate failure after commit but before temporal finds out.
+            .onFailure(e -> Log.error("Saving patient failed", e))
             .onFailure(err -> completionClient.completeExceptionally(token, (Exception) err))
             .onSuccess(ign -> completionClient.complete(token, null));
     }
@@ -107,6 +106,8 @@ public class ServiceExecutorImpl implements ServiceExecutor {
     public void savePatientWithHelpers(Patient patient) {
         Log.info("saving the patient!");
         runOnce(client, c -> doSavePatient(c, patient))
+            .onSuccess(igin -> sleep(9)) //Used to simulate failure after commit but before temporal finds out.
+            .onFailure(e -> Log.error("Saving patient failed", e))
             .onComplete(getCompletionClient(wc)::handle);
     }
 
@@ -116,14 +117,16 @@ public class ServiceExecutorImpl implements ServiceExecutor {
      *
      * @param patient The patient to save
      */
-    public void savePatient(Patient patient) {
-        Log.info("saving the patient!");
+    public void savePatientAsync(Patient patient) {
+        Log.info("saving the patient! " + getClass().getCanonicalName());
         asyncSave(patient);
     }
 
     @AsyncMethod
     public Future<Void> asyncSave(Patient patient) {
-        return runOnce(client, c -> doSavePatient(c, patient));
+        return runOnce(client, c -> doSavePatient(c, patient))
+            .onSuccess(ign -> sleep(9)) //Used to simulate failure after commit but before temporal finds out.
+            .onFailure(e -> Log.error("Saving patient failed", e));
     }
 
     private Future<RowSet<Row>> doSavePatient(SqlClient c, Patient patient) {
@@ -173,8 +176,9 @@ public class ServiceExecutorImpl implements ServiceExecutor {
         return "yes";
     }
 
-    private void sleep(int seconds) {
+    public static void sleep(int seconds) {
         try {
+            Log.infov("Sleeping for {0} seconds", seconds);
             Thread.sleep(seconds * 1000);
         } catch (InterruptedException ee) {
             // Empty

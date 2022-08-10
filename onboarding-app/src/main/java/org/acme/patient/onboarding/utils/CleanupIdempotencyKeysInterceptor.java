@@ -1,16 +1,15 @@
 package org.acme.patient.onboarding.utils;
 
 import io.quarkus.logging.Log;
-import io.temporal.client.WorkflowClient;
+import io.temporal.workflow.Workflow;
 import io.vertx.core.Future;
+import io.vertx.pgclient.PgPool;
+import io.vertx.sqlclient.Tuple;
 
 import javax.inject.Inject;
 import javax.interceptor.AroundInvoke;
 import javax.interceptor.Interceptor;
 import javax.interceptor.InvocationContext;
-
-import static org.acme.patient.onboarding.app.ServiceExecutorImpl.sleep;
-import static org.acme.patient.onboarding.utils.Activities.getCompletionClient;
 
 /**
  * An interceptor designed to be used on asynchronous Activity methods, which return a {@link Future}. When one
@@ -19,11 +18,11 @@ import static org.acme.patient.onboarding.utils.Activities.getCompletionClient;
  * returned by the annotated method completes.
  */
 @Interceptor
-@AsyncMethod
-public class AsyncMethodInterceptor {
+@CleanupIdempotencyKeys
+public class CleanupIdempotencyKeysInterceptor {
 
   @Inject
-  WorkflowClient wc;
+  PgPool client;
 
   /**
    * Mark the intercepted activity method as asynchronous, create a CompletionClient for the activity,
@@ -37,12 +36,13 @@ public class AsyncMethodInterceptor {
   @AroundInvoke
   public Object handle(InvocationContext ic) throws Exception {
     var out = ic.proceed();
-    if (out instanceof Future) {
-      ((Future<?>) out)
-          .onComplete(ign -> Log.info("Handling completion!"))
-          .onComplete(getCompletionClient(wc)::handle);
-    } else {
-      Log.warnv("@AsyncMethod annotation used on a method ({0}) which does not return a Future", ic.getMethod().getName());
+    var wfId = Workflow.getInfo().getWorkflowId();
+    try {
+      Log.info("Cleaning up idempotency keys");
+      client.preparedQuery("DELETE FROM idempotency_keys where wf_id = $1").execute(Tuple.of(wfId));
+      Log.info("Done cleaning up keys");
+    } catch (Exception ex ) {
+      Log.warn("Caught an error deleting idempotency keys", ex);
     }
     return out;
   }

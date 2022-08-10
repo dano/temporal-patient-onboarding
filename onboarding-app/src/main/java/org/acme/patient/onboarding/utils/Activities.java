@@ -14,6 +14,9 @@ import io.vertx.sqlclient.Tuple;
 import java.util.UUID;
 import java.util.function.Function;
 
+/**
+ * This class contains helper methods for use in Activity implementations.
+ */
 public final class Activities {
   public static final String SELECT_IDEMPOTENCY_KEY = "SELECT * from idempotency_keys where id = ($1)";
 
@@ -71,16 +74,6 @@ public final class Activities {
     );
   }
 
-  public static Future<Boolean> hasAlreadyRun(SqlConnection c, String idempotencyKey) {
-    return c.preparedQuery(SELECT_IDEMPOTENCY_KEY).execute(Tuple.of(idempotencyKey))
-        .map(rows -> rows.size() > 0);
-  }
-
-  private static Future<RowSet<Row>> saveIdempotencyKey(ActivityExecutionContext ctx, String uuid, SqlConnection c) {
-    var wfId = ctx.getInfo().getWorkflowId();
-    return c.preparedQuery(INSERT_IDEMPOTENCY_KEY).execute(Tuple.of(uuid, wfId));
-  }
-
   /**
    * Generate or fetch the idempotency key for an Activity. An idempotency key is a UUID
    * that is generated once for an activity, then stored in the Workflow via a heartbeat call.
@@ -89,8 +82,10 @@ public final class Activities {
    *
    * @param ctx The Activity's execution context.
    * @return The idempotency key for this Activity.
+   * @deprecated Use {@link #getIdempotencyKey(ActivityExecutionContext)} instead.
    */
-  public static String getIdempotencyKey(ActivityExecutionContext ctx) {
+  @Deprecated
+  public static String getIdempotencyKeyViaHeartBeat(ActivityExecutionContext ctx) {
     return ctx.getHeartbeatDetails(String.class)
         .orElseGet(() -> {
           var id = UUID.randomUUID().toString();
@@ -99,11 +94,56 @@ public final class Activities {
         });
   }
 
+  /**
+   * Generate an Idempotency key.
+   *
+   * This implementation simply uses the ID of the current activity as the ID.
+   *
+   * @param ctx The Activity's execution context.
+   * @return The idempotency key for this Activity.
+   */
+  public static String getIdempotencyKey(ActivityExecutionContext ctx) {
+    return ctx.getInfo().getActivityId();
+  }
+
+  /**
+   * Mark the activity this method is called from as asynchronous, and return a CompletionClient that
+   * can be used to indicate the activity has completed.
+   *
+   * @param wc The WorkflowClient for this Activity.
+   * @return A CompletionClient that can be used to complete the asynchronous activity.
+   */
   public static CompletionClient getCompletionClient(WorkflowClient wc) {
     var ctx = Activity.getExecutionContext();
     ctx.doNotCompleteOnReturn();
     var token = ctx.getTaskToken();
     return new CompletionClient(wc.newActivityCompletionClient(), token);
+  }
+
+  /**
+   * Determine if a given idempotency key has already been used.
+   *
+   * @param c A SqlConnection ot use to query the DB for the idempotency key.
+   * @param idempotencyKey The idempotency key to check for.
+   * @return A Future that will emit true if the idempotency key was already used to execute
+   * some code, false if it hasn't.
+   */
+  private static Future<Boolean> hasAlreadyRun(SqlConnection c, String idempotencyKey) {
+    return c.preparedQuery(SELECT_IDEMPOTENCY_KEY).execute(Tuple.of(idempotencyKey))
+        .map(rows -> rows.size() > 0);
+  }
+
+  /**
+   * Save the given idempotency key to the DB.
+   *
+   * @param ctx The activity execution context.
+   * @param uuid The idempotency key to save.
+   * @param c The SqlConnection to use to save the key to the db.
+   * @return A Future that emits success when the key is saved.
+   */
+  private static Future<Void> saveIdempotencyKey(ActivityExecutionContext ctx, String uuid, SqlConnection c) {
+    var wfId = ctx.getInfo().getWorkflowId();
+    return c.preparedQuery(INSERT_IDEMPOTENCY_KEY).execute(Tuple.of(uuid, wfId)).mapEmpty();
   }
 
   private Activities() {
