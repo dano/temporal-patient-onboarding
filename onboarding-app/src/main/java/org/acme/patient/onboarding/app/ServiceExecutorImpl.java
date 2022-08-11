@@ -46,7 +46,7 @@ public class ServiceExecutorImpl implements ServiceExecutor {
      *
      * @param patient The patient to save.
      */
-    public void savePatient(Patient patient) {
+    public void savePatient2(Patient patient) {
         Log.info("saving the patient!");
         var ctx = Activity.getExecutionContext();
         ctx.doNotCompleteOnReturn();
@@ -66,7 +66,7 @@ public class ServiceExecutorImpl implements ServiceExecutor {
      *
      * @param patient The patient to save.
      */
-    public void savePatientVerbose(Patient patient) {
+    public void savePatient(Patient patient) {
         Log.info("saving the patient!");
         var ctx = Activity.getExecutionContext();
         // Setup for asynchronous execution
